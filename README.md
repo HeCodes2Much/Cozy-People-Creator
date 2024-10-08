@@ -1,7 +1,5 @@
 # [Cozy People Asset Pack](https://shubibubi.itch.io/cozy-people) by [shubibubi](https://shubibubi.itch.io)
 
-I have sliced the sprites from this package (which I cannot share) so they can be used alongside this project.
-
 To use `serve.py` along with `Generator.html` to create sprites from the Cozy People Asset Pack, follow these steps:
 
 ### Prerequisites
@@ -13,8 +11,22 @@ To use `serve.py` along with `Generator.html` to create sprites from the Cozy Pe
 3. **Basic Files Setup**:
    - You should have `serve.py` and `Generator.html` in the same directory.
    - Place your cut-up sprite images in a folder that will be referenced by `Generator.html`.
+  
+### Download Files
+
+1. Download files using git. 
+   ```bash
+   git clone https://github.com/HeGames2Much/Cozy-People-Creator.git
+   ```
+
+2. Download from page.
+   [Cozy-People-Creator.zip](https://github.com/HeGames2Much/Cozy-People-Creator/archive/refs/heads/main.zip)
 
 ### Steps to Create Sprites
+
+![image](https://github.com/user-attachments/assets/64612507-39c9-452c-9b07-0b8c2e168c18)
+
+Each of these folder should have a file named `32x32` with the files inside before following along below.
 
 1. **Setting Up the Server**:
    - Open your terminal (Command Prompt, PowerShell, Terminal, etc.).
@@ -45,5 +57,7 @@ To use `serve.py` along with `Generator.html` to create sprites from the Cozy Pe
 ### Additional Notes
 
 - Make sure that all file paths within `Generator.html` correctly point to where your sprite images are located.
+- As the user currently you will need to slice the sprites up yourself as i am not able to share them I will ask Shubibubi to offer the sliced ones on there page.
+
 
 By following these steps, you should be able to successfully use `serve.py` along with `Generator.html` to create and manage your sprites from the Cozy People Asset Pack. If you have any questions or run into issues, feel free to ask!
