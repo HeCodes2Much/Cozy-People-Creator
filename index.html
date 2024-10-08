@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Generator</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="dark-mode">
+    <button class="btn btn-primary float-right mb-3" onclick="toggleDarkMode()">Toggle dark mode</button>
+    <br />
+    <details class="mb-3">
+        <summary class="font-weight-bold">Instructions:</summary>
+        <p>1. Ensure Generator.html is located in CozyPeopleAssetPack folder</p>
+        <p>2. Open Generator.html</p>
+        <p>3. Click Choose files to import the assets (Character_Generator Folder)</p>
+        <p>4. Voila!</p>
+    </details>
+    <br />
+    <label class="btn btn-primary mb-3">
+        Select Character_Generator
+        <input type="file" id="selectFiles" onchange="initializeCharacterAssetsFolder()" multiple webkitdirectory style="display: none;" />
+    </label>
+    <br />
+    <div id="selection" class="d-flex flex-wrap mb-3"></div>
+    <div>Right-click to save</div>
+    <br />
+    <button class="btn btn-success mt-3" onclick="triggerCutImageIntoSections()">Cut Image Into Sections</button>
+    <br />
+    <div class="containers">
+        <div id="base-sections">
+            <canvas id="canvas" class="canvas-style-base"></canvas>
+        </div>
+        <div id="cut-sections"></div>
+    </div>
+
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const resolution = ["32x32"];
+        const bodyType = ["Bodies"];
+        var bodies = [
+            [],
+            [],
+            []
+        ];
+        var outfit = [
+            [],
+            [],
+            []
+        ];
+        var hair = [
+            [],
+            [],
+            []
+        ];
+        var eyes = [
+            [],
+            [],
+            []
+        ];
+        var accessories = [
+            [],
+            [],
+            []
+        ];
+
+        var assetSizeMultiplier = [1];
+        var selectedSize = [0];
+        var selectedBody = [1];
+        var selectedOutfit = [1];
+        var selectedHair = [1];
+        var selectedEye = [0];
+        var selectedAccessories = [0];
+
+        function initializeCharacterAssetsFolder() {
+            var selectedFiles = Array.from(document.getElementById("selectFiles").files).map(element => ({
+                name: element.name,
+                path: element.webkitRelativePath
+            }));
+            for (var file of selectedFiles) {
+                composeResource(file);
+            }
+            sort();
+            initializeOptions();
+            draw();
+        }
+
+        function sort() {
+            bodies.forEach(sortInnerArr);
+            outfit.forEach(sortInnerArr);
+            hair.forEach(sortInnerArr);
+            eyes.forEach(sortInnerArr);
+            accessories.forEach(sortInnerArr);
+        }
+
+        function sortInnerArr(arr) {
+            arr.sort((a, b) => a.name.localeCompare(b.name));
+            arr.unshift({
+                name: "n/a",
+                path: ""
+            });
+        }
+
+        function initializeOptions() {
+            var div = document.getElementById("selection");
+            div.innerHTML = ''; // Clear previous selections
+
+            // Create option groups for each category with headers and multi-select enabled
+            div.appendChild(renderOptionGroup("Select Size", resolution, "selectSize", selectedSize, function(e) {
+                selectedSize = Array.from(e.target.selectedOptions).map(option => option.index);
+                initializeOptions(); // Reinitialize to refresh other selections if size changes
+            }));
+
+            div.appendChild(renderOptionGroup("Select Body", bodies[selectedSize[0]].map(x => x.name), "selectBody", selectedBody, function(e) {
+                selectedBody = Array.from(e.target.selectedOptions).map(option => option.index);
+                draw();
+            }));
+
+            div.appendChild(renderOptionGroup("Select Outfit", outfit[selectedSize[0]].map(x => x.name), "selectOutfit", selectedOutfit, function(e) {
+                selectedOutfit = Array.from(e.target.selectedOptions).map(option => option.index);
+                draw();
+            }));
+
+            div.appendChild(renderOptionGroup("Select Hair", hair[selectedSize[0]].map(x => x.name), "selectHair", selectedHair, function(e) {
+                selectedHair = Array.from(e.target.selectedOptions).map(option => option.index);
+                draw();
+            }));
+
+            div.appendChild(renderOptionGroup("Select Eye", eyes[selectedSize[0]].map(x => x.name), "selectEye", selectedEye, function(e) {
+                selectedEye = Array.from(e.target.selectedOptions).map(option => option.index);
+                draw();
+            }));
+
+            div.appendChild(renderOptionGroup("Select Accessories", accessories[selectedSize[0]].map(x => x.name), "selectAccs", selectedAccessories, function(e) {
+                selectedAccessories = Array.from(e.target.selectedOptions).map(option => option.index);
+                draw();
+            }));
+
+            draw(); // Draw after initialization
+        }
+
+        function createSelectionHeader(title) {
+            var header = document.createElement("h3");
+            header.textContent = title;
+            header.classList.add("selection-header");
+            return header;
+        }
+
+        function renderOptionGroup(headerText, options, elementId, initialIndexes, onChangeEvent) {
+            var optionGroup = document.createElement("div");
+            optionGroup.classList.add("form-group");
+
+            // Create and append header
+            var header = document.createElement("label");
+            header.classList.add("selection-header");
+            header.textContent = headerText;
+            optionGroup.appendChild(header);
+
+            // Create select element
+            var select = document.createElement("select");
+            select.size = 10;
+            select.multiple = true; // Enable multiple selections
+            select.classList.add("form-control");
+            select.addEventListener('change', function(e) {
+                // Clear all options' highlight classes
+                Array.from(select.options).forEach(option => option.classList.remove("highlight-selected"));
+
+                // Highlight all selected options
+                Array.from(select.selectedOptions).forEach(option => option.classList.add("highlight-selected"));
+
+                // Trigger the onChange event
+                onChangeEvent(e);
+            });
+
+            // Populate the options
+            for (var i = 0; i < options.length; i++) {
+                var opt = options[i];
+                var el = document.createElement("option");
+                el.textContent = opt;
+                el.value = opt; // If the initial indexes array contains the current index, mark it as selected
+                if (initialIndexes.includes(i)) {
+                    el.selected = true;
+                    el.classList.add("highlight-selected");
+                }
+                select.appendChild(el);
+            }
+            optionGroup.appendChild(select);
+            return optionGroup;
+        }
+
+        function composeResource(file) {
+            var path = file.path.split("/");
+            switch (path[1]) {
+                case "Bodies":
+                    generateResource(bodies, path, file);
+                    break;
+                case "Hairstyles":
+                    generateResource(hair, path, file);
+                    break;
+                case "Eyes":
+                    generateResource(eyes, path, file);
+                    break;
+                case "Outfits":
+                    generateResource(outfit, path, file);
+                    break;
+                case "Accessories":
+                    generateResource(accessories, path, file);
+                    break;
+            }
+        }
+
+        function generateResource(arr, path, file) {
+            switch (path[2]) {
+                case "32x32":
+                    arr[0].push(file);
+                    break;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            var imgPaths = [];
+
+            // Collect paths for all selected bodies
+            selectedBody.forEach(index => {
+                if (index > 0) imgPaths.push(bodies[selectedSize[0]][index].path);
+            });
+
+            // Collect paths for all selected outfits
+            selectedOutfit.forEach(index => {
+                if (index > 0) imgPaths.push(outfit[selectedSize[0]][index].path);
+            });
+
+            // Collect paths for all selected hair styles
+            selectedHair.forEach(index => {
+                if (index > 0) imgPaths.push(hair[selectedSize[0]][index].path);
+            });
+
+            // Collect paths for all selected eyes
+            selectedEye.forEach(index => {
+                if (index > 0) imgPaths.push(eyes[selectedSize[0]][index].path);
+            });
+
+            // Collect paths for all selected accessories
+            selectedAccessories.forEach(index => {
+                if (index > 0) imgPaths.push(accessories[selectedSize[0]][index].path);
+            });
+
+            // Render all the selected images
+            render(imgPaths, 0);
+        }
+
+        function render(imagePath, index) {
+            if (index >= imagePath.length) return;
+
+            const img = new Image();
+            img.src = imagePath[index]; // Load the image
+            img.onload = function() {
+                if (index === 0) {
+                    // Set the canvas size based on the first image
+                    canvas.width = this.naturalWidth; // Set canvas width
+                    canvas.height = this.naturalHeight; // Set canvas height
+                }
+                ctx.drawImage(this, 0, 0, this.naturalWidth, this.naturalHeight); // Draw image
+                render(imagePath, index + 1); // Call render for the next image
+            };
+            img.onerror = function() {
+                console.error(`Failed to load image at ${img.src}`);
+            };
+        }
+
+
+        function triggerCutImageIntoSections() {
+            const sectionHeights = [128, 128, 128, 128, 128, 128, 128, 32, 128, 128, 128, 128, 128]; // Heights of each section
+            const sectionWidth = 256; // Fixed width for all sections
+            const totalSections = sectionHeights.length; // Total number of sections
+            var cutImages = []; // Array to store data URLs of cut sections
+            var delay = 500; // Delay of 0.5 seconds in milliseconds
+
+            // Function to cut the image into sections after it's drawn
+            function cutImageIntoSections() {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height); // Get full image data
+                const sectionContainer = document.getElementById("cut-sections");
+                sectionContainer.innerHTML = ''; // Clear previous sections
+                let currentY = 0; // Track the current Y position on the canvas
+
+                sectionHeights.forEach((height, index) => {
+                    // Create a new canvas for each section
+                    const sectionCanvas = document.createElement("canvas");
+                    sectionCanvas.width = sectionWidth;
+                    sectionCanvas.height = height;
+                    sectionCanvas.className = "canvas-style-cut";
+                    const sectionCtx = sectionCanvas.getContext("2d");
+
+                    // Draw the section onto the new canvas
+                    const sectionData = ctx.getImageData(0, currentY, sectionWidth, height);
+                    sectionCtx.putImageData(sectionData, 0, 0);
+
+                    // Push the section's image data URL into the array
+                    cutImages.push(sectionCanvas.toDataURL());
+
+                    // Update the Y position for the next section
+                    currentY += height;
+                });
+            }
+
+            // Call the cutImageIntoSections function to prepare cut images
+            cutImageIntoSections();
+
+            // Array of section names
+            const sectionNames = [
+                "Walk",
+                "Jump",
+                "Pickup",
+                "Carry",
+                "Sword",
+                "Block",
+                "Hunt",
+                "Die",
+                "Pickaxe",
+                "Axe",
+                "Water",
+                "Hoe",
+                "Fish"
+            ];
+
+            // Create download links for each section with a delay
+            for (let i = 0; i < totalSections; i++) {
+                setTimeout(function() { // Create a download link for the current section
+                    let link = document.createElement("a");
+                    link.href = cutImages[i];
+                    link.download = `${sectionNames[i]}.png`; // Use the section name for the download file
+                    link.innerText = `Download ${sectionNames[i]}`; // Use the section name for the link text
+                    document.getElementById("cut-sections").appendChild(link);
+                    document.getElementById("cut-sections").appendChild(document.createElement("br"));
+                }, delay * i); // Delay increases with each section
+            }
+
+        }
+
+
+        function toggleDarkMode() {
+            document.body.classList.toggle("dark-mode");
+        }
+    </script>
+    <!-- Bootstrap JS (Optional) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <style>
+        body {
+            padding: 25px;
+            background-color: #f0f0f0;
+            color: #333;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            line-height: 1.6;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        .dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .toggle-button {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .toggle-button:hover {
+            background-color: #0056b3;
+        }
+
+        details {
+            margin-bottom: 15px;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .form-group {
+            display: inline-block;
+            padding: 10px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary input {
+            margin-left: 10px;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .options-container {
+            display: flex;
+            /* Keep the selects in a horizontal line */
+            gap: 20px;
+            /* Space between select elements */
+            margin-bottom: 20px;
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            /* Stack header above select */
+            align-items: center;
+            /* Center align items */
+            min-width: 100px;
+            /* Ensure consistent width for all groups */
+        }
+
+        select {
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: 150px;
+            margin-top: 5px;
+            /* Space between header and select */
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .highlight-selected {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+
+        .containers {
+            display: flex;
+            /* Use flexbox layout */
+            flex-direction: row;
+            /* Align children in a row */
+            align-items: flex-start;
+            /* Align items to the top */
+            margin-bottom: 20px;
+            /* Space between sections, adjust as needed */
+        }
+
+        #base-sections {
+            margin-right: 20px;
+            /* Space between base-sections and cut-sections */
+        }
+
+        .canvas-style-base {
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            margin: 10px;
+            padding: 10px;
+            display: inline-flow-root;
+            /* Maintain block formatting context */
+            max-width: 100%;
+            /* Prevent squishing */
+            height: auto;
+            /* Maintain aspect ratio */
+            vertical-align: top;
+            /* Aligns canvas to the top of its container */
+        }
+
+        .canvas-style-cut {
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            margin: 10px;
+            padding: 10px;
+            display: block;
+        }
+
+
+        .selection-header {
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</body>
+
+</html>
